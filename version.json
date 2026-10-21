@@ -1,8 +1,8 @@
 {
-  "version": "1.0.4",
+  "version": "1.0.5",
   "date": "2026-10-21",
-  "notes": "修复了自动更新替换失败的问题（现在会等程序真正退出再替换）",
-  "asar": "https://github.com/13256578162w-droid/TRIB/releases/download/v1.0.4/app.asar",
-  "full": "https://github.com/13256578162w-droid/TRIB/releases/download/v1.0.4/TRIB-1.0.4-win-x64.zip",
-  "minFrom": "1.0.0"
+  "notes": "更新更保险：下载后先校验、换之前自动备份、出问题可一键回滚；新增导出诊断",
+  "asar": "https://github.com/QianTeng-trib/TRIB/releases/download/v1.0.5/app.asar",
+  "full": "https://github.com/QianTeng-trib/TRIB/releases/download/v1.0.5/TRIB-1.0.5-win-x64.zip",
+  "minFrom": "1.0.5"
 }
