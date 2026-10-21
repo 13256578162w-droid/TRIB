@@ -1,8 +1,8 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "date": "2026-10-21",
-  "notes": "修复了同版本重复安装会互相覆盖的问题；加载器列表从 20 秒缩短到 0.4 秒；进度条和剩余时间改为按字节计算",
-  "asar": "https://github.com/13256578162w-droid/TRIB/releases/download/v1.0.2/app.asar",
-  "full": "https://github.com/13256578162w-droid/TRIB/releases/download/v1.0.2/%E5%88%86%E6%B5%81-1.0.2-win-x64.zip",
-  "minFrom": "1.0.0"
+  "notes": "支持拖入模组预检、一键更新、中文报错说明",
+  "asar": "https://github.com/13256578162w-droid/TRIB/releases/download/v1.0.3/app.asar",
+  "full": "https://github.com/13256578162w-droid/TRIB/releases/download/v1.0.3/%E5%88%86%E6%B5%81-1.0.3-win-x64.zip",
+  "minFrom": "1.0.2"
 }
