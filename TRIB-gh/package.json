@@ -1,0 +1,40 @@
+{
+  "name": "trib",
+  "productName": "分流",
+  "version": "1.0.0",
+  "description": "分流 TRIB —— Minecraft 版本下载器（独立于启动器）",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "build:dir": "electron-builder --dir",
+    "build:zip": "electron-builder --win zip"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "top.trib.downloader",
+    "productName": "分流",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "core/**/*",
+      "ui/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "zip"
+      ],
+      "artifactName": "TRIB-${version}-win-x64.${ext}",
+      "signAndEditExecutable": false
+    }
+  },
+  "author": {
+    "name": "分流"
+  }
+}

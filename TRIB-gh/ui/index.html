@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>分流 TRIB</title>
+<style>
+  :root {
+    --bg:#f3f7f6; --surface:#fff; --line:#e2eae7; --line-soft:#eef3f1;
+    --ink:#14231e; --ink-2:#586d66; --ink-3:#8fa39d;
+    --brand:#0e9f7e; --brand-dark:#0a7f64; --brand-soft:#e4f4ef;
+    --violet:#6f63a8; --violet-soft:#eeecf7;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"Microsoft YaHei UI","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif;
+    background:var(--bg); color:var(--ink); -webkit-font-smoothing:antialiased;
+    height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+  header { height:58px; background:var(--surface); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; padding:0 20px; gap:14px; flex-shrink:0; }
+  .logo { display:flex; align-items:center; gap:10px; }
+  .logo-mark { width:30px; height:30px; }
+  .brand-name { font-size:17px; font-weight:700; letter-spacing:1px; line-height:1; }
+  .brand-sub { font-size:10px; font-weight:600; letter-spacing:2.5px; color:var(--ink-3); margin-top:3px; }
+  .spacer { flex:1; }
+  .dir-chip { display:flex; align-items:center; gap:8px; height:34px; padding:0 12px;
+    border:1px solid var(--line); border-radius:8px; font-size:12.5px; color:var(--ink-2); background:#fbfdfc; }
+  .dir-chip b { font-weight:600; color:var(--ink); }
+
+  .body { flex:1; display:flex; min-height:0; }
+
+  aside { width:200px; flex-shrink:0; background:var(--surface); border-right:1px solid var(--line);
+    display:flex; flex-direction:column; }
+  .nav { padding:12px 10px; display:flex; flex-direction:column; gap:2px; }
+  .nav a { display:flex; align-items:center; gap:9px; height:36px; padding:0 10px; border-radius:8px;
+    font-size:13px; color:var(--ink-2); text-decoration:none; }
+  .nav a:hover { background:#f2f7f5; }
+  .nav a.on { background:var(--brand-soft); color:var(--brand-dark); font-weight:600; }
+  .nav svg { opacity:.85; }
+
+  .mascot { margin-top:auto; padding:0 4px; position:relative; }
+  .mascot::before { content:""; position:absolute; left:4px; right:4px; bottom:0; top:8px;
+    background:radial-gradient(ellipse at 50% 46%, #d9f0e8 0%, #ecf7f4 48%, rgba(255,255,255,0) 72%);
+    border-radius:24px; }
+  .mascot img { position:relative; width:100%; display:block; }
+  .mascot::after { content:""; position:absolute; left:50%; bottom:3px; transform:translateX(-50%);
+    width:112px; height:13px; border-radius:50%; pointer-events:none;
+    background:radial-gradient(ellipse at center, rgba(18,40,33,.17) 0%, rgba(18,40,33,.07) 45%, rgba(18,40,33,0) 72%); }
+  /* 举牌：把进度写到牌子上（坐标来自 560x840 原图的白牌区域）*/
+  .sign { position:absolute; left:10.6%; top:11.8%; width:29.2%; height:10.6%;
+    display:none; align-items:center; justify-content:center;
+    transform:rotate(-3.5deg); font-size:11px; font-weight:800; letter-spacing:.2px;
+    color:#0a7f64; font-variant-numeric:tabular-nums; }
+  .sign.on { display:flex; }
+  .bubble { position:relative; margin:0 2px 6px; background:var(--surface);
+    border:1px solid var(--line); border-radius:9px; padding:6px 9px; font-size:11px; color:var(--ink-2);
+    box-shadow:0 3px 10px rgba(20,35,30,.07); line-height:1.4; text-align:center; }
+  .bubble b { color:var(--ink); }
+
+  main { flex:1; min-width:0; display:flex; flex-direction:column; }
+  .toolbar { display:flex; align-items:center; gap:8px; padding:16px 20px 10px; flex-shrink:0; }
+  .tabs { display:flex; gap:4px; background:#e9f0ee; padding:3px; border-radius:9px; }
+  .tab { padding:6px 14px; font-size:13px; color:var(--ink-2); border-radius:7px; cursor:pointer; user-select:none; }
+  .tab.on { background:var(--surface); color:var(--brand-dark); font-weight:600; box-shadow:0 1px 2px rgba(20,35,30,.08); }
+  .sel-s { margin-left:auto; height:34px; padding:0 10px; border:1px solid var(--line); border-radius:9px;
+    background:#fff; font-size:12.5px; color:var(--ink-2); font-family:inherit; outline:none; cursor:pointer; }
+  .sel-s:hover { border-color:#bcd9d0; }
+  .search { margin-left:0; display:flex; align-items:center; gap:8px; height:34px; width:230px;
+    padding:0 12px; background:var(--surface); border:1px solid var(--line); border-radius:9px; }
+  .search input { border:0; outline:0; font-size:13px; width:100%; color:var(--ink); background:transparent; font-family:inherit; }
+  .search input::placeholder { color:var(--ink-3); }
+
+  .scroll { flex:1; overflow-y:auto; padding:6px 20px 24px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(198px,1fr)); gap:12px; }
+
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:13px 14px 11px; display:flex; flex-direction:column; min-height:112px;
+    transition:border-color .15s, transform .15s, box-shadow .15s; }
+  .card:hover { border-color:#bcd9d0; box-shadow:0 4px 14px rgba(14,159,126,.09); transform:translateY(-1px); }
+  .ver { font-size:16px; font-weight:700; line-height:1.35; word-break:keep-all; }
+  .ver.long { font-size:13.5px; word-break:break-all; letter-spacing:-.2px; }
+  .date { font-size:12px; color:var(--ink-3); margin-top:1px; }
+  .meta { font-size:11.5px; color:var(--ink-3); margin-top:5px; }
+  .card-foot { margin-top:auto; padding-top:10px; display:flex; align-items:center; gap:8px; }
+  .tag { font-size:10.5px; padding:2px 6px; border-radius:4px; font-weight:600; background:var(--brand-soft); color:var(--brand-dark); }
+  .tag.snap { background:var(--violet-soft); color:var(--violet); }
+  .tag.fool { background:#fdf0e4; color:#b5763a; }
+  .card.fool { background:linear-gradient(180deg,#fffdf9 0%,#fff 60%); }
+  .btn { margin-left:auto; height:28px; padding:0 13px; border-radius:7px; font-size:12.5px;
+    border:1px solid var(--brand); color:var(--brand-dark); background:transparent;
+    cursor:pointer; font-family:inherit; font-weight:600; }
+  .btn:hover { background:var(--brand); color:#fff; }
+  .installed { margin-left:auto; font-size:12px; color:var(--brand-dark); font-weight:600; }
+
+  .hero { grid-column:span 2; position:relative; overflow:hidden; min-height:150px;
+    background:linear-gradient(135deg,#ffffff 0%,#f2fbf8 100%); border-color:#cfe8e0; }
+  .hero:hover { transform:none; box-shadow:none; }
+  .hero .badge { display:inline-block; font-size:11px; font-weight:600; color:var(--brand-dark);
+    background:var(--brand-soft); padding:3px 8px; border-radius:5px; }
+  .hero .hver { font-size:30px; font-weight:800; letter-spacing:.5px; margin-top:8px; line-height:1.1; }
+  .hero .hmeta { font-size:12px; color:var(--ink-2); margin-top:7px; }
+  .hero .hsub { font-size:11.5px; color:var(--ink-3); margin-top:3px; }
+  .hero .hbtn { position:absolute; right:18px; bottom:16px; height:34px; padding:0 18px; border-radius:8px;
+    background:var(--brand); color:#fff; border:0; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .hero .hbtn:hover { background:var(--brand-dark); }
+  .hero svg.deco { position:absolute; right:-20px; top:-16px; width:170px; height:130px; opacity:.5; }
+
+  footer { height:62px; flex-shrink:0; background:var(--surface); border-top:1px solid var(--line);
+    display:flex; align-items:center; gap:16px; padding:0 20px; }
+  .health { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--ink-2); white-space:nowrap; }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--brand); box-shadow:0 0 0 3px var(--brand-soft); }
+  .health b { color:var(--ink); font-weight:600; }
+  .divider { width:1px; height:22px; background:var(--line); }
+  .prog { flex:1; display:flex; align-items:center; gap:12px; min-width:0; }
+  .prog-label { font-size:12.5px; color:var(--ink-2); white-space:nowrap; }
+  .prog-label b { color:var(--ink); font-weight:600; }
+  .bar { flex:1; height:6px; background:#e9f0ee; border-radius:3px; overflow:hidden; }
+  .bar i { display:block; height:100%; width:62%; background:linear-gradient(90deg,#12b48e,#0e9f7e); }
+  .prog-stat { font-size:12px; color:var(--ink-3); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .prog-act { display:none; gap:6px; margin-left:4px; }
+  .prog-act.on { display:flex; }
+  .prog-act button { height:24px; padding:0 10px; border-radius:6px; font-size:11.5px; font-family:inherit;
+    border:1px solid var(--line); background:#fff; color:var(--ink-2); cursor:pointer; }
+  .prog-act button:hover { border-color:#bcd9d0; color:var(--brand-dark); }
+  /* ---------- 视图切换 ---------- */
+  .view { display:none; flex:1; min-height:0; flex-direction:column; }
+  .view.on { display:flex; }
+
+  /* ---------- 加载器页 ---------- */
+  .split { flex:1; display:flex; min-height:0; }
+  .pane-left { width:300px; flex-shrink:0; border-right:1px solid var(--line); display:flex; flex-direction:column; background:#fbfdfc; }
+  .pane-head { padding:14px 16px 10px; border-bottom:1px solid var(--line-soft); }
+  .pane-title { font-size:13px; font-weight:600; color:var(--ink); }
+  .pane-sub { font-size:11.5px; color:var(--ink-3); margin-top:3px; }
+  .vlist { flex:1; overflow-y:auto; padding:8px; }
+  .vrow { display:flex; align-items:center; gap:8px; padding:9px 10px; border-radius:8px; cursor:pointer; font-size:13px; color:var(--ink-2); }
+  .vrow:hover { background:#f1f7f5; }
+  .vrow.on { background:var(--brand-soft); color:var(--brand-dark); font-weight:600; }
+  .vrow .ok { margin-left:auto; font-size:11px; color:var(--brand-dark); }
+  .vrow .no { margin-left:auto; font-size:11px; color:var(--ink-3); }
+
+  .pane-right { flex:1; min-width:0; display:flex; flex-direction:column; }
+  .loader-head { padding:16px 22px 0; }
+  .loader-title { font-size:15px; font-weight:700; }
+  .loader-title b { color:var(--brand-dark); }
+  .segs { display:inline-flex; gap:3px; background:#edf3f1; padding:3px; border-radius:9px; margin-top:12px; }
+  .segs div { padding:6px 16px; font-size:12.5px; color:var(--ink-2); border-radius:7px; cursor:pointer; }
+  .segs div.on { background:#fff; color:var(--brand-dark); font-weight:600; box-shadow:0 1px 2px rgba(20,35,30,.08); }
+  .lrows { flex:1; overflow-y:auto; padding:12px 22px 16px; }
+  .lrow { display:flex; align-items:center; gap:12px; padding:11px 14px; border:1px solid var(--line);
+    border-radius:10px; margin-bottom:8px; background:#fff; }
+  .lrow:hover { border-color:#bcd9d0; }
+  .lname { font-size:13.5px; font-weight:600; }
+  .lmeta { font-size:11.5px; color:var(--ink-3); margin-top:2px; }
+  .lbadge { font-size:10.5px; padding:2px 7px; border-radius:5px; background:var(--brand-soft); color:var(--brand-dark); font-weight:600; }
+  .lbtn { margin-left:auto; height:28px; padding:0 14px; border-radius:7px; font-size:12.5px; font-weight:600;
+    border:1px solid var(--brand); color:var(--brand-dark); background:transparent; cursor:pointer; font-family:inherit; }
+  .lbtn:hover { background:var(--brand); color:#fff; }
+  .lbar { padding:12px 22px; border-top:1px solid var(--line); display:flex; align-items:center; gap:12px; font-size:12px; color:var(--ink-3); }
+  .lbar .go { margin-left:auto; height:34px; padding:0 20px; border:0; border-radius:8px; background:var(--brand);
+    color:#fff; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .lbar .go:hover { background:var(--brand-dark); }
+
+  /* ---------- 已安装页 ---------- */
+  .tablewrap { flex:1; overflow-y:auto; padding:16px 22px 24px; }
+  .summary { display:flex; gap:24px; margin-bottom:14px; font-size:12.5px; color:var(--ink-2); }
+  .summary b { color:var(--ink); font-size:15px; font-weight:700; margin-right:4px; }
+  table.mc { width:100%; border-collapse:separate; border-spacing:0 6px; }
+  table.mc th { text-align:left; font-size:11.5px; font-weight:600; color:var(--ink-3); padding:0 12px 6px; }
+  table.mc td { background:#fff; padding:12px; font-size:12.5px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+  table.mc td:first-child { border-left:1px solid var(--line); border-radius:10px 0 0 10px; }
+  table.mc td:last-child { border-right:1px solid var(--line); border-radius:0 10px 10px 0; }
+  table.mc tr:hover td { border-color:#cfe6df; }
+  .vname { font-size:13.5px; font-weight:600; }
+  .pill { font-size:11px; padding:2px 7px; border-radius:5px; }
+  .pill.ok { background:var(--brand-soft); color:var(--brand-dark); }
+  .pill.bad { background:#fdeceb; color:#b4483f; }
+  .acts { display:flex; gap:6px; justify-content:flex-end; }
+  .act { font-size:11.5px; padding:4px 9px; border-radius:6px; border:1px solid var(--line);
+    color:var(--ink-2); background:#fff; cursor:pointer; font-family:inherit; }
+  .act:hover { border-color:#bcd9d0; color:var(--brand-dark); }
+  .act.danger:hover { border-color:#e8b7b2; color:#b4483f; }
+
+  /* ---------- 设置页 ---------- */
+  .settings { flex:1; overflow-y:auto; padding:18px 24px 32px; }
+  .group { max-width:720px; margin-bottom:22px; }
+  .group-title { font-size:12px; font-weight:700; color:var(--ink-3); letter-spacing:.5px; margin-bottom:8px; }
+  .field { display:flex; align-items:center; gap:16px; padding:11px 14px; background:#fff;
+    border:1px solid var(--line); border-bottom:0; font-size:12.5px; }
+  .field:first-of-type { border-radius:10px 10px 0 0; }
+  .field:last-of-type { border-bottom:1px solid var(--line); border-radius:0 0 10px 10px; }
+  .field > label { width:150px; color:var(--ink-2); }
+  .field .ctl { margin-left:auto; display:flex; align-items:center; gap:8px; color:var(--ink); }
+  .inp { height:30px; padding:0 10px; border:1px solid var(--line); border-radius:7px; font-size:12px;
+    font-family:inherit; color:var(--ink); background:#fbfdfc; outline:none; min-width:200px; }
+  .inp:focus { border-color:var(--brand); }
+  .mini-seg { display:flex; gap:2px; background:#edf3f1; padding:2px; border-radius:7px; }
+  .mini-seg span { padding:5px 11px; border-radius:6px; font-size:11.5px; color:var(--ink-2); cursor:pointer; }
+  .mini-seg span.on { background:#fff; color:var(--brand-dark); font-weight:600; }
+  .sw { width:38px; height:21px; border-radius:11px; background:#d8e5e1; position:relative; cursor:pointer; }
+  .sw::after { content:""; position:absolute; top:2px; left:2px; width:17px; height:17px; border-radius:50%; background:#fff; transition:.15s; }
+  .sw.on { background:var(--brand); }
+  .sw.on::after { left:19px; }
+  .link { color:var(--brand-dark); font-weight:600; cursor:pointer; }
+
+  /* ---------- 关于页（彩蛋） ---------- */
+  .about { position:fixed; inset:0; z-index:60; background:linear-gradient(160deg,#f7fbfa 0%,#eaf6f2 45%,#f7fbfa 100%);
+    display:none; }
+  .about.on { display:flex; }
+  .about-left { flex:1; position:relative; display:flex; align-items:flex-end; justify-content:center; overflow:hidden; }
+  .about-left img { height:96%; max-height:none; object-fit:contain; margin-bottom:0; }
+  .about-right { width:460px; flex-shrink:0; padding:56px 48px 40px 8px; display:flex; flex-direction:column; justify-content:center; }
+  .about-mark { display:flex; align-items:center; gap:10px; margin-bottom:18px; }
+  .about-name { font-size:34px; font-weight:800; letter-spacing:2px; }
+  .about-en { font-size:12px; letter-spacing:4px; color:var(--ink-3); font-weight:600; margin-top:2px; }
+  .about-etym { margin-top:22px; font-size:13px; line-height:1.9; color:var(--ink-2); }
+  .about-etym b { color:var(--brand-dark); }
+  .about-card { margin-top:26px; background:rgba(255,255,255,.75); border:1px solid var(--line);
+    border-radius:12px; padding:16px 18px; font-size:12.5px; color:var(--ink-2); line-height:1.9; }
+  .about-card h4 { font-size:12px; color:var(--ink-3); margin-bottom:6px; font-weight:600; letter-spacing:.5px; }
+  .about-foot { margin-top:auto; font-size:11.5px; color:var(--ink-3); }
+  .about-close { position:absolute; right:18px; top:16px; width:30px; height:30px; border-radius:8px; border:1px solid var(--line);
+    background:rgba(255,255,255,.8); color:var(--ink-2); cursor:pointer; font-family:inherit; font-size:15px; z-index:2; }
+
+
+  /* ---------- 安装抽屉 ---------- */
+  .mask { position:fixed; inset:0; z-index:30; background:rgba(16,30,26,.26); opacity:0; pointer-events:none; transition:opacity .18s; }
+  .mask.on { opacity:1; pointer-events:auto; }
+  .drawer { position:fixed; top:0; right:0; bottom:0; width:420px; z-index:31; background:var(--surface);
+    border-left:1px solid var(--line); box-shadow:-12px 0 32px rgba(20,35,30,.10);
+    transform:translateX(100%); transition:transform .2s ease; display:flex; flex-direction:column; }
+  .drawer.on { transform:none; }
+  .drawer-head { padding:20px 22px 14px; border-bottom:1px solid var(--line-soft); display:flex; align-items:flex-start; }
+  .drawer-title { font-size:13px; color:var(--ink-3); }
+  .drawer-title b { display:block; font-size:20px; color:var(--ink); font-weight:700; margin-bottom:3px; }
+  .drawer-close { margin-left:auto; width:26px; height:26px; border-radius:7px; border:0; background:#f1f6f4;
+    color:var(--ink-3); font-size:15px; line-height:1; cursor:pointer; font-family:inherit; }
+  .drawer-body { padding:18px 22px; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:18px; }
+  .drawer-foot { padding:14px 22px 18px; border-top:1px solid var(--line-soft); display:flex; gap:10px; }
+  .field-label { font-size:12px; color:var(--ink-3); margin-bottom:8px; font-weight:600; }
+  .hint { font-size:11.5px; color:var(--ink-3); margin-top:7px; line-height:1.5; }
+  .inp { width:100%; height:36px; padding:0 11px; border:1px solid var(--line); border-radius:8px;
+    font-size:12.5px; font-family:inherit; color:var(--ink); background:#fbfdfc; outline:none; }
+  .inp:focus { border-color:var(--brand); }
+  .seg2 { display:flex; gap:4px; background:#edf3f1; padding:3px; border-radius:9px; }
+  .seg2 div { flex:1; text-align:center; padding:6px 0; font-size:12.5px; color:var(--ink-2); border-radius:7px; cursor:pointer; }
+  .seg2 div.on { background:var(--surface); color:var(--brand-dark); font-weight:600; box-shadow:0 1px 2px rgba(20,35,30,.08); }
+  .check { display:flex; align-items:flex-start; gap:9px; padding:9px 0; border-top:1px solid var(--line-soft); font-size:12.5px; }
+  .check:first-child { border-top:0; }
+  .check .ico { width:16px; flex-shrink:0; text-align:center; font-weight:700; }
+  .check .ok { color:var(--brand); } .check .bad { color:#b4483f; } .check .warn { color:#b5763a; }
+  .check .txt { color:var(--ink-2); line-height:1.6; }
+  .check .txt b { color:var(--ink); font-weight:600; }
+  .btn-ghost2 { flex:1; height:38px; border-radius:8px; border:1px solid var(--line); background:#fff;
+    font-size:13px; color:var(--ink-2); cursor:pointer; font-family:inherit; }
+  .btn-primary2 { flex:2; height:38px; border-radius:8px; border:0; background:var(--brand); color:#fff;
+    font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .btn-primary2:hover { background:var(--brand-dark); }
+  .btn-primary2:disabled { background:#c9d9d4; cursor:not-allowed; }
+  /* ---------- 右键菜单 ---------- */
+  .ctx { position:fixed; z-index:60; min-width:188px; background:#fff; border:1px solid var(--line);
+    border-radius:10px; box-shadow:0 8px 26px rgba(20,35,30,.14); padding:5px; display:none; }
+  .ctx.on { display:block; }
+  .ctx div { padding:8px 11px; font-size:12.5px; color:var(--ink-2); border-radius:6px; cursor:pointer; white-space:nowrap; }
+  .ctx div:hover { background:var(--brand-soft); color:var(--brand-dark); }
+  .ctx .sep { height:1px; background:var(--line-soft); margin:4px 6px; padding:0; pointer-events:none; }
+  /* ---------- 公告 ---------- */
+  .bell { position:relative; width:34px; height:34px; border-radius:8px; border:1px solid var(--line);
+    background:#fbfdfc; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .bell:hover { border-color:#bcd9d0; }
+  .bell .newdot { position:absolute; top:6px; right:7px; width:6px; height:6px; border-radius:50%;
+    background:#e0533d; box-shadow:0 0 0 2px #fff; display:none; }
+  .bell.hasnew .newdot { display:block; }
+  .ann { position:absolute; top:52px; right:18px; width:380px; max-height:420px; overflow-y:auto;
+    background:#fff; border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px rgba(20,35,30,.14);
+    z-index:50; display:none; }
+  .ann.on { display:block; }
+  .ann-head { padding:12px 16px; border-bottom:1px solid var(--line-soft); font-size:12px; color:var(--ink-3); }
+  .ann-item { padding:13px 16px; border-bottom:1px solid var(--line-soft); }
+  .ann-item:last-child { border-bottom:0; }
+  .ann-item h4 { font-size:13px; color:var(--ink); margin-bottom:5px; font-weight:600; }
+  .ann-item p { font-size:12px; color:var(--ink-2); line-height:1.7; white-space:pre-wrap; }
+  .ann-item .time { font-size:11px; color:var(--ink-3); margin-top:6px; }
+  .ann-empty { padding:26px 16px; text-align:center; color:var(--ink-3); font-size:12.5px; }
+  /* ---------- 公告横幅 ---------- */
+  .banner { display:none; align-items:center; gap:10px; padding:9px 20px; font-size:12.5px;
+    border-bottom:1px solid var(--line); }
+  .banner.on { display:flex; }
+  .banner.info { background:#eef7f4; color:var(--brand-dark); }
+  .banner.warn { background:#fdf5e9; color:#9a6220; }
+  .banner.urgent { background:#fdecea; color:#a33a2e; }
+  .banner b { font-weight:700; }
+  .banner .x { margin-left:auto; cursor:pointer; opacity:.6; font-size:15px; line-height:1; }
+  .banner .x:hover { opacity:1; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg class="logo-mark" viewBox="0 0 32 32" fill="none">
+      <path d="M4 9.5c4-3 6-3 10 0s6 3 10 0" stroke="#0e9f7e" stroke-width="2.1" stroke-linecap="round" opacity=".3"/>
+      <path d="M4 16c4-3 6-3 10 0s6 3 10 0" stroke="#0e9f7e" stroke-width="2.1" stroke-linecap="round" opacity=".6"/>
+      <path d="M4 22.5c4-3 6-3 10 0s6 3 10 0" stroke="#0e9f7e" stroke-width="2.1" stroke-linecap="round"/>
+    </svg>
+    <div><div class="brand-name">分流</div><div class="brand-sub">TRIB</div></div>
+  </div>
+  <div class="spacer"></div>
+  <div class="bell" id="bell" title="公告">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2a3.4 3.4 0 0 0-3.4 3.4c0 2.2-.6 3.3-1.1 4h9c-.5-.7-1.1-1.8-1.1-4A3.4 3.4 0 0 0 8 2Z" stroke="#586d66" stroke-width="1.3" stroke-linejoin="round"/><path d="M6.6 11.6a1.5 1.5 0 0 0 2.8 0" stroke="#586d66" stroke-width="1.3" stroke-linecap="round"/></svg>
+    <span class="newdot"></span>
+  </div>
+  <div class="dir-chip">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M1.5 4.2a1 1 0 0 1 1-1h3.4l1.3 1.6h6.3a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V4.2Z" stroke="#586d66" stroke-width="1.2"/></svg>
+    游戏目录 <b id="gameDirChip">读取中…</b>
+    <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M3 4.5 6 7.5 9 4.5" stroke="#586d66" stroke-width="1.3" stroke-linecap="round"/></svg>
+  </div>
+</header>
+<div class="banner" id="banner"></div>
+
+<div class="body">
+  <aside>
+    <nav class="nav">
+      <a class="on" href="#" data-view="games">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1.8 14 5v6l-6 3.2L2 11V5l6-3.2Z" stroke="#0e9f7e" stroke-width="1.3" stroke-linejoin="round"/><path d="M2.2 5.1 8 8.2l5.8-3.1M8 8.2V14" stroke="#0e9f7e" stroke-width="1.1" opacity=".55"/></svg>
+        原版游戏
+      </a>
+      <a href="#" data-view="loaders">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 2h4v2.2l1.9 1.1 1.9-1.1 2 3.4-1.9 1.1v2.2l1.9 1.1-2 3.4-1.9-1.1L10 15H6v-2.2L4.1 11.7 2.2 12.8l-2-3.4 1.9-1.1V6.1L.2 5l2-3.4 1.9 1.1L6 2Z" stroke="#586d66" stroke-width="1.1" stroke-linejoin="round" transform="scale(.92) translate(1 1)"/></svg>
+        加载器
+      </a>
+      <a href="#" data-view="installed">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.3" stroke="#586d66" stroke-width="1.3"/><path d="m5.2 8.2 2 2 3.6-3.8" stroke="#586d66" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        已安装
+      </a>
+      <a href="#" data-view="settings">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.2" stroke="#586d66" stroke-width="1.3"/><path d="M8 1.4v1.8M8 12.8v1.8M1.4 8h1.8M12.8 8h1.8M3.4 3.4l1.3 1.3M11.3 11.3l1.3 1.3M12.6 3.4l-1.3 1.3M4.7 11.3l-1.3 1.3" stroke="#586d66" stroke-width="1.2" stroke-linecap="round"/></svg>
+        设置
+      </a>
+    </nav>
+    <div class="mascot" id="mascotSlot">
+      <img id="mascot" src="../assets/mascot/idle.png" alt="">
+      <div class="sign" id="sign"><span>62%</span></div>
+    </div>
+  </aside>
+
+  <main>
+    <section class="view on" id="view-games">
+      <div class="toolbar">
+        <div class="tabs">
+          <div class="tab on" data-t="all">全部</div>
+          <div class="tab" data-t="release">正式版</div>
+          <div class="tab" data-t="snapshot">快照</div>
+          <div class="tab" data-t="fools">愚人节</div>
+          <div class="tab" data-t="installed">已安装</div>
+        </div>
+        <span id="countHint" style="font-size:12px;color:#8fa39d"></span>
+        <select id="branch" class="sel-s"><option value="">全部分支</option></select>
+        <div class="search">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.6" stroke="#8fa39d" stroke-width="1.4"/><path d="m10.6 10.6 3 3" stroke="#8fa39d" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <input placeholder="搜版本号，例如 1.21.1">
+        </div>
+      </div>
+      <div class="scroll"><div class="grid" id="grid"></div></div>
+    </section>
+
+    <section class="view" id="view-loaders">
+      <div class="split">
+        <div class="pane-left">
+          <div class="pane-head">
+            <div class="pane-title">选择游戏版本</div>
+            <div class="pane-sub">已装过的打勾；没装的会先装原版</div>
+          </div>
+          <div class="vlist" id="mcSel"></div>
+        </div>
+        <div class="pane-right">
+          <div class="loader-head">
+            <div class="loader-title">为 <b id="loadTarget">1.21.1</b> 安装加载器</div>
+            <div class="segs" id="loaderSeg">
+              <div class="on" data-l="NeoForge">NeoForge</div>
+              <div data-l="Forge">Forge</div>
+              <div data-l="Fabric">Fabric</div>
+            </div>
+          </div>
+          <div class="lrows" id="loaderRows"></div>
+          <div class="lbar">
+            <span id="loadHint">原版 1.21.1 已安装 · 装好后会出现在 PCL 的版本列表里</span>
+            <button class="go" id="loadGo">安装 NeoForge 21.1.248</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-installed">
+      <div class="tablewrap">
+        <div class="summary">
+          <div><b>5</b>个版本</div>
+          <div><b>2.8</b>GB 磁盘占用</div>
+          <div>最近一次校验：2 分钟前</div>
+        </div>
+        <table class="mc">
+          <thead><tr><th>版本</th><th>类型</th><th>Java</th><th>大小</th><th>状态</th><th style="text-align:right">操作</th></tr></thead>
+          <tbody id="instBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="view" id="view-settings">
+      <div class="settings">
+        <div class="group">
+          <div class="group-title">下载</div>
+          <div class="field"><label>默认游戏目录</label>
+            <div class="ctl"><input class="inp" id="cfgGameDir" style="min-width:300px"><span style="color:#0a7f64;font-weight:600;cursor:pointer" id="pickDir">选择</span></div></div>
+          <div class="field"><label>下载源策略</label>
+            <div class="ctl"><div class="mini-seg" id="cfgMirror"><span class="on" data-v="auto">自动</span><span data-v="official">仅官方</span><span data-v="bmclapi">仅镜像</span></div></div></div>
+          <div class="field"><label>并发数</label>
+            <div class="ctl"><div class="mini-seg" id="cfgThreads"><span data-v="8">8</span><span data-v="16">16</span><span class="on" data-v="32">32</span></div></div></div>
+          <div class="field"><label>装完自动校验</label>
+            <div class="ctl"><div class="sw on" id="cfgVerify"></div></div></div>
+          <div class="field"><label>安装后清理临时文件</label>
+            <div class="ctl"><div class="sw on"></div></div></div>
+        </div>
+
+        <div class="group">
+          <div class="group-title">游戏</div>
+          <div class="field"><label>Java 路径</label>
+            <div class="ctl"><input class="inp" id="cfgJava" placeholder="自动检测，或指定 java.exe" style="min-width:300px"></div></div>
+          <div class="field"><label>默认内存</label>
+            <div class="ctl"><div class="mini-seg" id="cfgMemory"><span data-v="2G">2G</span><span class="on" data-v="4G">4G</span><span data-v="8G">8G</span><span data-v="16G">16G</span></div></div></div>
+          <div class="field"><label>离线玩家名</label>
+            <div class="ctl"><input class="inp" id="cfgName" style="min-width:160px"></div></div>
+        </div>
+
+        <div class="group">
+          <div class="group-title">外观</div>
+          <div class="field"><label>显示吉祥物</label>
+            <div class="ctl"><div class="sw on" id="cfgMascot"></div></div></div>
+          <div class="field"><label>窗口大小</label>
+            <div class="ctl">1280 × 800 <span style="color:#8fa39d">（拖动窗口自动记住）</span></div></div>
+        </div>
+
+        <div class="group">
+          <div class="group-title">其它</div>
+          <div class="field"><label>日志</label>
+            <div class="ctl"><div class="mini-seg" id="cfgLog"><span class="on" data-v="normal">普通</span><span data-v="debug">详细</span></div></div></div>
+          <div class="field"><label>公告源 URL</label>
+            <div class="ctl"><input class="inp" id="cfgAnnounce" placeholder="https://…/announcements.json" style="min-width:300px"></div></div>
+          <div class="field"><label>关于</label>
+            <div class="ctl"><span class="link" id="aboutLink">关于分流 ▸</span></div></div>
+        </div>
+      </div>
+    </section>
+</main>
+</div>
+
+<footer>
+  <div class="health"><span class="dot"></span> 源正常 <b>官方 420ms</b> · 镜像 4.1s</div>
+  <div class="divider"></div>
+  <div class="prog">
+    <div class="prog-label"><b>1.21.1</b> 安装中</div>
+    <div class="bar"><i></i></div>
+    <div class="prog-stat"></div>
+    <div class="prog-act" id="progAct">
+      <button id="btnStop">停止</button>
+    </div>
+  </div>
+</footer>
+
+<div class="about" id="about">
+  <button class="about-close" id="aboutClose">✕</button>
+  <div class="about-left"><img src="../assets/mascot/done.png" alt="玖汐溪"></div>
+  <div class="about-right">
+    <div class="about-mark">
+      <svg width="34" height="34" viewBox="0 0 32 32" fill="none">
+        <path d="M4 9.5c4-3 6-3 10 0s6 3 10 0" stroke="#0e9f7e" stroke-width="2.1" stroke-linecap="round" opacity=".3"/>
+        <path d="M4 16c4-3 6-3 10 0s6 3 10 0" stroke="#0e9f7e" stroke-width="2.1" stroke-linecap="round" opacity=".6"/>
+        <path d="M4 22.5c4-3 6-3 10 0s6 3 10 0" stroke="#0e9f7e" stroke-width="2.1" stroke-linecap="round"/>
+      </svg>
+      <div>
+        <div class="about-name">分流</div>
+        <div class="about-en">T R I B U T A R Y</div>
+      </div>
+    </div>
+    <div class="about-etym">
+      主河道是官方，支流是分散到各处的启动器。<br>
+      但无论是河道还是支流，我们最终都会汇聚在一片海洋。
+    </div>
+    <div class="about-card">
+      <h4>玖汐溪</h4>
+      守着这条支流的人。<br>
+      <b>汐</b>是晚潮，<b>溪</b>是细流——<br>
+      水从来不会只走一条路，ta们有许许多多的分支可以前往。<br>
+      但无论如何，我们发源一处，汇聚一处。
+    </div>
+    <div class="about-foot">
+      版本 1.0.0 · 开源 · 不收集任何数据<br>
+      本工具不托管任何游戏文件，所有资源均来自官方与公开镜像
+    </div>
+  </div>
+</div>
+
+<div class="ann" id="annPanel">
+  <div class="ann-head" id="annHead">公告</div>
+  <div id="annList"></div>
+</div>
+<div class="ctx" id="ctxMenu"></div>
+<div class="mask" id="piMask"></div>
+<div class="drawer" id="piDrawer">
+  <div class="drawer-head">
+    <div class="drawer-title"><b id="piVer">1.21.1</b>准备安装</div>
+    <button class="drawer-close" id="piClose">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div>
+      <div class="field-label">实例名称</div>
+      <input class="inp" id="piName" value="1.21.1">
+      <div class="hint">装好后在启动器版本列表里显示这个名字，随时也能改</div>
+    </div>
+    <div>
+      <div class="field-label">安装到</div>
+      <select class="inp" id="piDir"></select>
+      <div class="hint" id="piDirHint">正在检测本机的启动器…</div>
+    </div>
+    <div>
+      <div class="field-label">加载器</div>
+      <div class="seg2" id="piLoader">
+        <div class="on" data-l="vanilla">原版</div>
+        <div data-l="NeoForge">NeoForge</div>
+        <div data-l="Forge">Forge</div>
+        <div data-l="Fabric">Fabric</div>
+      </div>
+      <select class="inp" id="piLoaderVer" style="margin-top:8px;display:none"></select>
+    </div>
+    <div>
+      <div class="field-label">安装前检查</div>
+      <div id="piChecks"><div class="check"><span class="ico">·</span><span class="txt">检查中…</span></div></div>
+    </div>
+  </div>
+  <div class="drawer-foot">
+    <button class="btn-ghost2" id="piCancel">取消</button>
+    <button class="btn-primary2" id="piGo">开始安装</button>
+  </div>
+</div>
+<script>
+/* ============================================================
+   分流 TRIB —— 渲染进程
+   有 window.trib（Electron）时走真实内核；浏览器里打开则用演示数据
+   ============================================================ */
+const REAL = typeof window !== "undefined" && !!window.trib;
+
+const FOOL_IDS = ["26w14a","25w14craftmine","24w14potato","23w13a_or_b","22w13oneblockatatime",
+  "20w14infinite","3D Shareware v1.34","1.RV-Pre1","15w14a"];
+
+const state = {
+  all: [], shown: [], tab: "all", kw: "", branch: "", pageSize: 48,
+  installed: [], cfg: {}, mc: "1.21.1", loader: "NeoForge",
+  downloading: null,
+  paused: false,
+  lastTask: null,
+};
+
+/* ---------------- 工具 ---------------- */
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+const MB = (n) => Math.round(n / 1048576);
+
+function humanBytes(n) {
+  if (!n) return "0 B";
+  const u = ["B","KB","MB","GB"]; let i = 0;
+  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  return n.toFixed(i ? 1 : 0) + " " + u[i];
+}
+
+/* ---------------- 版本卡片 ---------------- */
+function tagOf(v) {
+  if (v.type === "fool") return { cls: "fool", text: "4/1" };
+  if (v.type === "release") return { cls: "", text: "正式版" };
+  return { cls: "snap", text: "快照" };
+}
+
+function card(v) {
+  const t = tagOf(v);
+  const meta = v.java ? "Java " + v.java + (v.mb ? " · " + v.mb + " MB" : "") : (v.mb ? v.mb + " MB" : "");
+  return '<div class="card' + (v.type === "fool" ? " fool" : "") + '" data-ver="' + v.id + '" data-kind="' + v.type + '" data-date="' + (v.date || "") + '">' +
+    '<div class="ver' + (v.id.length > 13 ? " long" : "") + '">' + v.id + '</div>' +
+    '<div class="date">' + v.date + '</div>' +
+    (meta ? '<div class="meta">' + meta + '</div>' : '<div class="meta">&nbsp;</div>') +
+    '<div class="card-foot"><span class="tag ' + t.cls + '">' + t.text + '</span>' +
+    '<button class="btn" data-install="' + v.id + '">安装</button></div></div>';
+}
+
+function heroCard(v) {
+  return '<div class="card hero">' +
+    '<svg class="deco" viewBox="0 0 120 100" fill="none">' +
+      '<path d="M10 30c14-11 22-11 36 0s22 11 36 0" stroke="#0e9f7e" stroke-width="3" stroke-linecap="round" opacity=".25"/>' +
+      '<path d="M10 52c14-11 22-11 36 0s22 11 36 0" stroke="#0e9f7e" stroke-width="3" stroke-linecap="round" opacity=".18"/>' +
+      '<path d="M10 74c14-11 22-11 36 0s22 11 36 0" stroke="#0e9f7e" stroke-width="3" stroke-linecap="round" opacity=".12"/>' +
+    '</svg>' +
+    '<span class="badge">' + (v.type === "release" ? "最新正式版" : "最新版本") + '</span>' +
+    '<div class="hver">' + v.id + '</div>' +
+    '<div class="hmeta">' + v.date + (v.java ? ' · Java ' + v.java : '') + '</div>' +
+    '<div class="hsub">' + (v.mb ? "游戏本体 + 资源文件 共约 " + v.mb + " MB" : "点击安装，自动选择最快的源") + '</div>' +
+    '<button class="hbtn" data-install="' + v.id + '">安装</button></div>';
+}
+
+const PAGE = 48;
+function currentList() {
+  let list = state.all;
+  if (state.tab === "fools") list = list.filter(v => FOOL_IDS.includes(v.id));
+  else if (state.tab === "release") list = list.filter(v => v.type === "release");
+  else if (state.tab === "snapshot") list = list.filter(v => v.type === "snapshot");
+  if (state.branch) list = list.filter(v => v.branch === state.branch);
+  if (state.kw) {
+    const q = state.kw.toLowerCase();
+    list = list.filter(v => v.id.toLowerCase().includes(q));
+  }
+  return list;
+}
+
+function renderGrid() {
+  const grid = $("#grid");
+  if (state.tab === "installed") {
+    grid.innerHTML = state.installed.length
+      ? state.installed.map(v => card({ id: v.id, type: "release", date: (v.bytes ? humanBytes(v.bytes) : ""), java: v.java })).join("")
+      : '<div style="padding:40px;color:#8fa39d">还没有安装任何版本</div>';
+    return;
+  }
+  const all = currentList();
+  if (!all.length) {
+    grid.innerHTML = '<div style="padding:40px;color:#8fa39d">没有匹配的版本</div>';
+    return;
+  }
+  const hint = $("#countHint");
+  if (hint) hint.textContent = "共 " + all.length + " 个版本";
+  const show = all.slice(0, state.pageSize);
+  const heroCardOk = state.pageSize === PAGE && !state.kw && state.tab !== "fools" && state.tab !== "snapshot";
+  const hero = heroCardOk ? all.find(v => v.type === "release") : null;
+  let html = hero ? heroCard(hero) : "";
+  html += (hero ? show.slice(1) : show).map(card).join("");
+  if (all.length > show.length) {
+    html += '<div style="grid-column:1/-1;text-align:center;padding:14px">' +
+      '<button class="btn" id="moreBtn" style="margin:0">加载更多（还有 ' + (all.length - show.length) + ' 个）</button></div>';
+  }
+  grid.innerHTML = html;
+  const more = $("#moreBtn");
+  if (more) more.onclick = () => { state.pageSize += PAGE; renderGrid(); };
+}
+
+/* ---------------- 加载数据 ---------------- */
+async function loadVersions() {
+  if (!REAL) {
+    state.all = DEMO_VERSIONS.slice();
+    state.shown = DEMO_VERSIONS.slice(0, 26);
+    renderGrid();
+    return;
+  }
+  try {
+    const r = await window.trib.versions.list({ limit: 0 });
+    state.all = r.versions.map(v => Object.assign({}, v, { branch: (v.id.match(/^(\d+\.\d+)/) || ["", "其它"])[1] }));
+    state.shown = r.versions;
+    fillBranch();
+    renderGrid();
+    enrichDetails(state.all.slice(0, 16));
+  } catch (e) {
+    $("#grid").innerHTML = '<div style="padding:40px;color:#b4483f">获取版本列表失败：' + e.message + '</div>';
+  }
+}
+
+// 后台补 Java / 体积（每个版本要拉一次 json，只补前若干个）
+async function enrichDetails(list) {
+  for (const v of list) {
+    try {
+      const info = await window.trib.versionDetail(v.id);
+      if (info) {
+        v.java = info.java; v.mb = info.mb;
+        const t = state.all.find(x => x.id === v.id);
+        if (t) { t.java = info.java; t.mb = info.mb; }
+        renderGrid();
+      }
+    } catch { /* 忽略 */ }
+  }
+}
+
+/* ---------------- 安装 ---------------- */
+async function doInstall(id, opts) {
+  opts = opts || {};
+  if (state.downloading) return;
+  state.downloading = id;
+  state.paused = false;
+  state.lastTask = { type: "version", id: id, opts: opts };
+  setMascot("downloading");
+  updateProgress({ label: id, done: 0, total: 0, bytes: 0, speed: 0, current: "" });
+  try {
+    if (REAL) await window.trib.versions.install(Object.assign({ id: id }, opts));
+    else { await demoProgress(id); }
+    setMascot("done");
+    updateProgress(null, id + " 安装完成");
+    await refreshInstalled();
+    setTimeout(() => setMascot("idle"), 4000);
+  } catch (e) {
+    if (state.paused) {
+      updateProgress(null, "已停止 · 点「继续」会从断点接着下");
+      setMascot("idle");
+    } else {
+      setMascot("error");
+      updateProgress(null, "安装失败：" + e.message);
+    }
+  } finally {
+    state.downloading = null;
+    state.paused = false;
+    refreshStatus();
+  }
+}
+
+function demoProgress(id) {
+  return new Promise((resolve) => {
+    let p = 0;
+    const t = setInterval(() => {
+      p += 6 + Math.random() * 9;
+      if (p >= 100) { p = 100; clearInterval(t); resolve(); }
+      updateProgress({ label: id, done: p, total: 100, bytes: p * 5.1e6, speed: 4.2e6, current: "" });
+    }, 220);
+  });
+}
+
+/* ---------------- 进度条 ---------------- */
+function updateProgress(p, message) {
+  const label = $(".prog-label"), bar = $(".bar i"), stat = $(".prog-stat"), act = $("#progAct");
+  if (!label) return;
+  if (act) act.classList.toggle("on", !!p && !state.paused);
+  if (!p) { label.innerHTML = message || "空闲"; bar.style.width = "0%"; stat.textContent = ""; return; }
+  const pct = p.total ? Math.min(100, Math.round(p.done / p.total * 100)) : 0;
+  label.innerHTML = "<b>" + p.label + "</b> 安装中";
+  bar.style.width = pct + "%";
+  const eta = p.speed ? Math.max(0, (p.total * 4e6 - p.bytes) / p.speed) : 0;
+  stat.textContent = pct + "% · " + humanBytes(p.speed) + "/s" + (eta ? " · 剩 " + Math.floor(eta / 60) + ":" + String(Math.floor(eta % 60)).padStart(2, "0") : "");
+  const sign = $("#sign span");
+  if (sign) sign.textContent = pct + "%";
+}
+
+/* ---------------- 已安装 ---------------- */
+async function refreshInstalled() {
+  if (!REAL) { state.installed = DEMO_INSTALLED; renderInstalled(); return; }
+  try {
+    state.installed = await window.trib.installed.scan();
+    renderInstalled();
+  } catch { state.installed = []; renderInstalled(); }
+}
+
+function renderInstalled() {
+  const body = $("#instBody");
+  const totalBytes = state.installed.reduce((s, v) => s + (v.bytes || 0), 0);
+  $(".summary").innerHTML = "<div><b>" + state.installed.length + "</b>个版本</div>" +
+    "<div><b>" + humanBytes(totalBytes) + "</b> 磁盘占用</div><div>点“校验”可以逐个文件核对</div>";
+  body.innerHTML = state.installed.map(v =>
+    '<tr><td><div class="vname">' + v.id + '</div></td>' +
+    '<td>' + (v.inheritsFrom ? "加载器" : "原版") + '</td>' +
+    '<td>Java ' + v.java + '</td><td>' + humanBytes(v.bytes) + '</td>' +
+    '<td><span class="pill ' + (v.ok === false ? "bad" : "ok") + '">' +
+      (v.ok === false ? "缺 " + v.missing + " 个文件" : "完整") + '</span></td>' +
+    '<td><div class="acts">' +
+      '<button class="act" data-check="' + v.id + '">校验</button>' +
+      (v.ok === false ? '<button class="act" data-repair="' + v.id + '">修复</button>' : '') +
+      '<button class="act" data-open="' + v.id + '">打开目录</button>' +
+      '<button class="act danger" data-del="' + v.id + '">删除</button>' +
+    '</div></td></tr>').join("");
+}
+
+/* ---------------- 加载器页 ---------------- */
+function renderMcSel() {
+  const list = state.all.slice(0, 40);
+  const installedIds = new Set(state.installed.map(v => v.id));
+  $("#mcSel").innerHTML = list.map(m => {
+    const ok = installedIds.has(m.id);
+    return '<div class="vrow' + (m.id === state.mc ? " on" : "") + '" data-mc="' + m.id + '">' + m.id +
+      (ok ? '<span class="ok">已安装</span>' : '<span class="no">未安装</span>') + '</div>';
+  }).join("");
+  $$("#mcSel .vrow").forEach(r => {
+    r.onclick = () => { state.mc = r.dataset.mc; renderMcSel(); loadLoaders(); };
+  });
+}
+
+async function loadLoaders() {
+  $("#loadTarget").textContent = state.mc;
+  $("#loaderRows").innerHTML = '<div style="padding:20px;color:#8fa39d">正在获取 ' + state.loader + ' 版本…</div>';
+  let rows = [];
+  if (REAL) {
+    try {
+      const r = await window.trib.loader.list(state.loader, state.mc);
+      rows = r.map((x, i) => ({ v: x.version, tag: i === 0 ? "推荐" : "", date: x.date || "" }));
+    } catch (e) {
+      $("#loaderRows").innerHTML = '<div style="padding:20px;color:#b4483f">获取失败：' + e.message + '</div>';
+      return;
+    }
+  } else {
+    rows = DEMO_LOADERS[state.loader] || [];
+  }
+  if (!rows.length) {
+    $("#loaderRows").innerHTML = '<div style="padding:20px;color:#8fa39d">' + state.mc + ' 没有 ' + state.loader + ' 可用版本</div>';
+    return;
+  }
+  $("#loaderRows").innerHTML = rows.map(l =>
+    '<div class="lrow"><div><div class="lname">' + state.loader + ' ' + l.v + '</div>' +
+    '<div class="lmeta">' + (l.date || "") + '</div></div>' +
+    (l.tag ? '<span class="lbadge">' + l.tag + '</span>' : '') +
+    '<button class="lbtn" data-loader="' + state.loader + ':' + l.v + '">安装</button></div>').join("");
+  $("#loadGo").textContent = "安装 " + state.loader + " " + rows[0].v;
+  const inst = state.installed.some(x => x.id === state.mc);
+  $("#loadHint").textContent = "原版 " + state.mc + (inst ? " 已安装" : " 未安装，会先自动装原版") + " · 装好后会出现在 PCL 的版本列表里";
+}
+
+async function doInstallLoader(spec) {
+  if (state.downloading) return;
+  state.downloading = state.mc;
+  state.paused = false;
+  state.lastTask = { type: "loader", id: state.mc, spec: spec };
+  setMascot("downloading");
+  try {
+    if (REAL) await window.trib.loader.install(state.mc, spec);
+    else await demoProgress(state.mc);
+    setMascot("done");
+    updateProgress(null, "加载器安装完成");
+    await refreshInstalled();
+    setTimeout(() => setMascot("idle"), 4000);
+  } catch (e) {
+    if (state.paused) { updateProgress(null, "已停止 · 点「继续」接着装"); setMascot("idle"); }
+    else { setMascot("error"); updateProgress(null, "安装失败：" + e.message); }
+  } finally {
+    state.downloading = null;
+    state.paused = false;
+  }
+}
+
+/* ---------------- 视图 ---------------- */
+function showView(name) {
+  $$(".view").forEach(v => v.classList.toggle("on", v.id === "view-" + name));
+  $$(".nav a").forEach(a => a.classList.toggle("on", a.dataset.view === name));
+  if (name === "installed") refreshInstalled();
+  if (name === "loaders") { renderMcSel(); loadLoaders(); }
+}
+
+/* ---------------- 吉祥物 ---------------- */
+function setMascot(st, text) {
+  const img = $("#mascot"), slot = $("#mascotSlot");
+  if (!img) return;
+  img.src = "../assets/mascot/" + st + ".png";
+  const sign = $("#sign");
+  if (sign) sign.classList.toggle("on", st === "downloading");
+  const old = slot.querySelector(".bubble");
+  if (old) old.remove();
+  if (text) {
+    const b = document.createElement("div");
+    b.className = "bubble"; b.innerHTML = text;
+    slot.insertBefore(b, img);
+  }
+}
+
+/* ---------------- 设置 ---------------- */
+async function loadSettings() {
+  if (!REAL) return;
+  state.cfg = await window.trib.config.get();
+  $("#cfgGameDir").value = state.cfg.gameDir || "";
+  $("#cfgJava").value = state.cfg.javaPath || "";
+  $("#cfgName").value = state.cfg.offlineName || "Steve";
+  const ann = $("#cfgAnnounce"); if (ann) ann.value = state.cfg.announceUrl || "";
+  $("#cfgVerify").classList.toggle("on", state.cfg.autoVerify !== false);
+  $("#cfgMascot").classList.toggle("on", state.cfg.showMascot !== false);
+  markSeg("#cfgThreads", String(state.cfg.threads || 32));
+  markSeg("#cfgMemory", state.cfg.memory || "4G");
+  const ms = state.cfg.mirrors || ["official", "bmclapi"];
+  markSeg("#cfgMirror", ms.length > 1 ? "auto" : (ms[0] === "official" ? "official" : "bmclapi"));
+  markSeg("#cfgLog", state.cfg.logLevel || "normal");
+  $("#gameDirChip").textContent = state.cfg.gameDir || "";
+}
+
+function markSeg(sel, val) {
+  $$(sel + " span").forEach(s => s.classList.toggle("on", s.dataset.v === val));
+}
+
+async function saveSettings() {
+  if (!REAL) return;
+  const threads = $("#cfgThreads .on")?.dataset.v || "32";
+  const memory = $("#cfgMemory .on")?.dataset.v || "4G";
+  const mirrorKey = $("#cfgMirror .on")?.dataset.v || "auto";
+  const mirrorMap = { auto: ["official", "bmclapi"], official: ["official"], bmclapi: ["bmclapi"] };
+  const logKey = $("#cfgLog .on")?.dataset.v || "normal";
+  state.cfg = {
+    ...state.cfg,
+    gameDir: $("#cfgGameDir").value,
+    javaPath: $("#cfgJava").value,
+    offlineName: $("#cfgName").value,
+    announceUrl: ($("#cfgAnnounce") ? $("#cfgAnnounce").value.trim() : ""),
+    threads: Number(threads),
+    memory,
+    autoVerify: $("#cfgVerify").classList.contains("on"),
+    showMascot: $("#cfgMascot").classList.contains("on"),
+    mirrors: mirrorMap[mirrorKey] || ["official", "bmclapi"],
+    logLevel: logKey,
+  };
+  await window.trib.config.set(state.cfg);
+  $("#gameDirChip").textContent = state.cfg.gameDir;
+  if (!state.cfg.showMascot) $(".mascot").style.display = "none";
+  else $(".mascot").style.display = "";
+  refreshStatus();
+}
+
+/* ---------------- 状态栏 ---------------- */
+function refreshStatus() {
+  const h = $(".health");
+  if (h) h.innerHTML = '<span class="dot"></span> 源正常';
+}
+
+/* ---------------- 演示数据 ---------------- */
+const DEMO_VERSIONS = [
+  { id: "26.4-snapshot-4", type: "snapshot", date: "2026-10-13" },
+  { id: "26.4-snapshot-3", type: "snapshot", date: "2026-10-06" },
+  { id: "26.3", type: "release", date: "2026-09-15", java: 25, mb: 502 },
+  { id: "26.2", type: "release", date: "2026-06-16", java: 25, mb: 498 },
+  { id: "1.21.11", type: "release", date: "2025-12-09", java: 21, mb: 480 },
+  { id: "1.21.1", type: "release", date: "2024-08-08", java: 21, mb: 462 },
+  { id: "24w14potato", type: "snapshot", date: "2024-04-01" },
+  { id: "1.20.1", type: "release", date: "2023-06-12", java: 17, mb: 420 }
+];
+const DEMO_INSTALLED = [
+  { id: "1.21.1-NeoForge_21.1.248", inheritsFrom: "1.21.1", java: 21, bytes: 1.2e9, ok: true, missing: 0 },
+  { id: "1.21.11-Fabric 0.19.3", inheritsFrom: "1.21.11", java: 21, bytes: 9e8, ok: true, missing: 0 },
+  { id: "1.20.1-Forge_47.4.23", inheritsFrom: "1.20.1", java: 17, bytes: 8e8, ok: true, missing: 0 },
+  { id: "1.12.2-Forge_14.23.5.2860", inheritsFrom: "1.12.2", java: 8, bytes: 4e8, ok: false, missing: 3 },
+  { id: "1.21.1", inheritsFrom: null, java: 21, bytes: 6e8, ok: true, missing: 0 }
+];
+const DEMO_LOADERS = {
+  NeoForge: [{ v: "21.1.248", tag: "推荐", date: "2026-08-12" }, { v: "21.1.247", date: "2026-07-30" }],
+  Forge: [{ v: "47.4.23", tag: "推荐", date: "2026-06-20" }, { v: "47.4.22", date: "2026-05-11" }],
+  Fabric: [{ v: "0.19.3", tag: "推荐", date: "2026-09-01" }, { v: "0.19.2", date: "2026-08-15" }]
+};
+
+/* ---------------- 事件绑定 ---------------- */
+document.addEventListener("click", async (e) => {
+  const t = e.target;
+  if (!(t instanceof HTMLElement)) return;
+
+  if (t.dataset.install) { openInstall(t.dataset.install); return; }
+
+  if (t.dataset.loader) { doInstallLoader(t.dataset.loader); return; }
+
+  if (t.dataset.check) {
+    if (!REAL) return;
+    t.textContent = "校验中…";
+    try {
+      const r = await window.trib.installed.check(t.dataset.check);
+      t.textContent = r.ok ? "完整 ✓" : "缺 " + r.missing;
+      setTimeout(() => (t.textContent = "校验"), 3000);
+    } catch (err) { t.textContent = "失败"; }
+    return;
+  }
+  if (t.dataset.repair) {
+    if (!REAL) return;
+    t.textContent = "修复中…";
+    try {
+      await window.trib.installed.repair(t.dataset.repair);
+      await refreshInstalled();
+    } catch (err) { t.textContent = "失败"; }
+    return;
+  }
+  if (t.dataset.open) { if (REAL) window.trib.installed.open(t.dataset.open); return; }
+  if (t.dataset.del) {
+    if (!REAL) return;
+    if (!confirm("删除版本 " + t.dataset.del + "？此操作不可撤销。")) return;
+    await window.trib.installed.remove(t.dataset.del);
+    await refreshInstalled();
+    return;
+  }
+});
+
+$$(".tab").forEach(el => {
+  el.onclick = () => {
+    $$(".tab").forEach(x => x.classList.remove("on"));
+    el.classList.add("on");
+    state.tab = el.dataset.t;
+    state.pageSize = 48;
+    renderGrid();
+  };
+});
+
+$$(".nav a").forEach(a => {
+  a.onclick = (e) => { e.preventDefault(); showView(a.dataset.view); };
+});
+
+$$("#loaderSeg div").forEach(d => {
+  d.onclick = () => {
+    $$("#loaderSeg div").forEach(x => x.classList.remove("on"));
+    d.classList.add("on");
+    state.loader = d.dataset.l;
+    loadLoaders();
+  };
+});
+
+$$(".mini-seg").forEach(g => {
+  g.onclick = (e) => {
+    const s = e.target.closest("span");
+    if (!s || !s.dataset.v) return;
+    Array.from(g.children).forEach(c => c.classList.remove("on"));
+    s.classList.add("on");
+    saveSettings();
+  };
+});
+
+$$(".sw").forEach(sw => {
+  sw.onclick = () => { sw.classList.toggle("on"); if (sw.id) saveSettings(); };
+});
+
+function fillBranch() {
+  const sel = $("#branch");
+  if (!sel) return;
+  const set = new Set(state.all.map(v => v.branch).filter(Boolean));
+  const groups = Array.from(set).sort((a, b) => {
+    const pa = a.split(".").map(Number), pb = b.split(".").map(Number);
+    return (pb[0] - pa[0]) || (pb[1] - pa[1]);
+  });
+  sel.innerHTML = '<option value="">全部分支</option>' +
+    groups.map(g => '<option value="' + g + '">' + g + '.x</option>').join("");
+}
+const branchSel = $("#branch");
+if (branchSel) branchSel.onchange = () => { state.branch = branchSel.value; state.pageSize = 48; renderGrid(); };
+
+const searchInput = $(".search input");
+if (searchInput) searchInput.oninput = (e) => { state.kw = e.target.value.trim(); renderGrid(); };
+
+const pickDir = $("#pickDir");
+if (pickDir) pickDir.onclick = async () => {
+  if (!REAL) return;
+  const d = await window.trib.dir.pick();
+  if (d) { $("#cfgGameDir").value = d; saveSettings(); }
+};
+
+const aboutLink = $("#aboutLink");
+if (aboutLink) aboutLink.onclick = () => $("#about").classList.add("on");
+const aboutClose = $("#aboutClose");
+if (aboutClose) aboutClose.onclick = () => $("#about").classList.remove("on");
+const logo = $(".logo");
+if (logo) logo.ondblclick = () => $("#about").classList.add("on");
+const aboutEl = $("#about");
+if (aboutEl) aboutEl.onclick = (e) => { if (e.target === aboutEl) aboutEl.classList.remove("on"); };
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && aboutEl) aboutEl.classList.remove("on");
+});
+
+/* ---------------- 启动 ---------------- */
+(async function init() {
+  if (REAL) {
+    window.trib.on("install:progress", (p) => updateProgress(p));
+;
+    window.trib.on("install:error", (p) => { updateProgress(null, "安装失败：" + p.message); setMascot("error"); });
+    window.trib.on("repair:progress", (p) => updateProgress({ label: "修复 " + p.id, done: p.done, total: p.total, bytes: 0, speed: 0 }));
+    await loadSettings();
+    await refreshInstalled();
+  }
+  await loadVersions();
+  refreshStatus();
+  setTimeout(function () { refreshAnnounce(true); }, 1500);
+  setInterval(function () { refreshAnnounce(true); }, 6 * 3600 * 1000);
+  updateProgress(null, "空闲");
+})();
+
+/* ---------------- 安装抽屉：预检 + 命名 + 交付 ---------------- */
+const pi = { id: "", name: "", loader: "vanilla", loaderVersion: "", dir: "", launchers: [], pre: null };
+
+function piChecked(p) {
+  const rows = [];
+  const has = (p.java.available || []).map(j => j.major);
+  const need = p.java.required;
+  const okJava = has.some(m => m >= need);
+  rows.push(checkRow(okJava ? "ok" : "bad", okJava ? "✓" : "✗",
+    "Java " + need + " 或更高 · 检测到 " + (has.length ? has.join(" / ") : "无") +
+    (okJava ? "" : "（没有合适的 Java，启动会失败）")));
+
+  const b = p.bytes;
+  rows.push(checkRow("ok", "·", "需要下载 " + humanBytes(b.total) +
+    "（本体 " + humanBytes(b.client) + " · 资源 " + humanBytes(b.assets) + " · 库 " + humanBytes(b.libs) +
+    (b.loader ? " · 加载器 " + humanBytes(b.loader) : "") + "）"));
+
+  if (p.disk && p.disk.free != null) {
+    const enough = p.disk.free > b.total * 2.2;
+    rows.push(checkRow(enough ? "ok" : "bad", enough ? "✓" : "✗",
+      "磁盘 " + p.disk.drive + " 剩余 " + humanBytes(p.disk.free) + (enough ? "" : "（可能不够）")));
+  }
+
+  rows.push(checkRow(p.installed ? "warn" : "ok", p.installed ? "!" : "○",
+    p.installed ? "这个目录里已经有同名版本，安装会覆盖它" : "全新安装"));
+
+  const s = p.sources || {};
+  rows.push(checkRow("ok", "·", "下载源 官方 " + (s.official ? s.official + " ms" : "不通") +
+    " · 镜像 " + (s.bmclapi ? s.bmclapi + " ms" : "不通")));
+
+  return rows.join("");
+}
+
+function checkRow(cls, icon, text) {
+  return '<div class="check"><span class="ico ' + cls + '">' + icon + '</span><span class="txt">' + text + "</span></div>";
+}
+
+async function openInstall(id) {
+  pi.id = id; pi.name = id; pi.loader = "vanilla"; pi.loaderVersion = "";
+  document.getElementById("piVer").textContent = id;
+  document.getElementById("piName").value = id;
+  const lv = document.getElementById("piLoaderVer");
+  lv.style.display = "none"; lv.innerHTML = "";
+  document.querySelectorAll("#piLoader div").forEach(d => d.classList.toggle("on", d.dataset.l === "vanilla"));
+  document.getElementById("piDrawer").classList.add("on");
+  document.getElementById("piMask").classList.add("on");
+  document.getElementById("piChecks").innerHTML = checkRow("", "·", "检查中…");
+  document.getElementById("piGo").disabled = true;
+
+  if (!pi.launchers.length && REAL) {
+    try { pi.launchers = await window.trib.launchers(); } catch (e) { pi.launchers = []; }
+  }
+  const opts = pi.launchers.length ? pi.launchers
+    : [{ name: "当前目录", dir: (REAL ? (state.cfg.gameDir || "") : "D:/Release 2.4.4/.minecraft"), count: 0 }];
+  const sel = document.getElementById("piDir");
+  sel.innerHTML = opts.map(l => '<option value="' + l.dir + '">' + l.name + " · " + l.dir +
+    (l.count ? "（" + l.count + " 个版本）" : "") + "</option>").join("");
+  pi.dir = opts[0].dir;
+  document.getElementById("piDirHint").textContent = pi.launchers.length ? "装完这个启动器里就能看到" : "";
+  runPrecheck();
+}
+
+async function runPrecheck() {
+  const box = document.getElementById("piChecks");
+  document.getElementById("piGo").disabled = true;
+  box.innerHTML = checkRow("", "·", "检查中…");
+  if (!REAL) {
+    box.innerHTML = piChecked({ java: { required: 21, available: [{ major: 21 }] }, disk: { free: 50e9, drive: "D:\\" },
+      bytes: { total: 502e6, client: 26e6, assets: 462e6, libs: 72e6, loader: 0 }, installed: false, sources: { official: 420, bmclapi: 4100 } });
+    document.getElementById("piGo").disabled = false;
+    return;
+  }
+  try {
+    const p = await window.trib.precheck({ id: pi.id, loader: pi.loader, loaderVersion: pi.loaderVersion, dir: pi.dir });
+    pi.pre = p;
+    box.innerHTML = piChecked(p);
+    document.getElementById("piGo").disabled = false;
+  } catch (e) {
+    box.innerHTML = checkRow("bad", "✗", "预检失败：" + e.message);
+    document.getElementById("piGo").disabled = false;
+  }
+}
+
+function closeInstall() {
+  document.getElementById("piDrawer").classList.remove("on");
+  document.getElementById("piMask").classList.remove("on");
+}
+
+document.getElementById("piClose").onclick = closeInstall;
+document.getElementById("piCancel").onclick = closeInstall;
+document.getElementById("piMask").onclick = closeInstall;
+document.getElementById("piName").oninput = (e) => { pi.name = e.target.value.trim(); };
+document.getElementById("piDir").onchange = (e) => { pi.dir = e.target.value; runPrecheck(); };
+document.getElementById("piLoaderVer").onchange = (e) => { pi.loaderVersion = e.target.value; runPrecheck(); };
+
+document.querySelectorAll("#piLoader div").forEach(d => {
+  d.onclick = async () => {
+    document.querySelectorAll("#piLoader div").forEach(x => x.classList.remove("on"));
+    d.classList.add("on");
+    pi.loader = d.dataset.l;
+    pi.loaderVersion = "";
+    const sel = document.getElementById("piLoaderVer");
+    if (pi.loader === "vanilla") { sel.style.display = "none"; sel.innerHTML = ""; runPrecheck(); return; }
+    sel.style.display = "";
+    sel.innerHTML = "<option>正在获取版本…</option>";
+    try {
+      const list = REAL ? await window.trib.loader.list(pi.loader, pi.id) : [{ version: "21.1.248" }];
+      if (!list.length) { sel.innerHTML = "<option>该版本没有可用的 " + pi.loader + "</option>"; }
+      else {
+        sel.innerHTML = list.map((x, i) => '<option value="' + x.version + '">' + pi.loader + " " + x.version + (i === 0 ? "（推荐）" : "") + "</option>").join("");
+        pi.loaderVersion = list[0].version;
+      }
+    } catch (e) { sel.innerHTML = "<option>获取失败：" + e.message + "</option>"; }
+    runPrecheck();
+  };
+});
+
+document.getElementById("piGo").onclick = async () => {
+  const name = (pi.name || pi.id).trim();
+  const opts = { name: name, loader: pi.loader, loaderVersion: pi.loaderVersion, dir: pi.dir };
+  closeInstall();
+  await doInstall(pi.id, opts);
+};
+
+/* ---------------- 右键菜单 ---------------- */
+const ctxEl = document.getElementById("ctxMenu");
+let ctxTarget = null;
+
+function closeCtx() { if (ctxEl) ctxEl.classList.remove("on"); }
+
+function showCtx(x, y, items) {
+  if (!ctxEl) return;
+  ctxEl.innerHTML = items.map(function (it, i) {
+    if (it === "-") return '<div class="sep"></div>';
+    return '<div data-i="' + i + '">' + it.label + "</div>";
+  }).join("");
+  ctxEl.classList.add("on");
+  const w = 196, h = items.length * 34 + 12;
+  ctxEl.style.left = Math.min(x, window.innerWidth - w - 8) + "px";
+  ctxEl.style.top = Math.min(y, window.innerHeight - h - 8) + "px";
+  ctxEl.querySelectorAll("[data-i]").forEach(function (el) {
+    el.onclick = function () {
+      const it = items[Number(el.dataset.i)];
+      closeCtx();
+      if (it && it.run) it.run();
+    };
+  });
+}
+
+async function copyText(text, label) {
+  try {
+    if (REAL) await window.trib.copy(text);
+    else await navigator.clipboard.writeText(text);
+    updateProgress(null, "已复制" + (label ? "：" + label : ""));
+    setTimeout(function () { updateProgress(null, "空闲"); }, 1600);
+  } catch (e) { updateProgress(null, "复制失败：" + e.message); }
+}
+
+document.addEventListener("contextmenu", function (e) {
+  const card = e.target.closest(".card");
+  if (!card) { closeCtx(); return; }
+  e.preventDefault();
+  const ver = card.dataset.ver || "";
+  const kind = card.dataset.kind || "";
+  const date = card.dataset.date || "";
+  const items = [
+    { label: "复制版本号", run: function () { copyText(ver, ver); } },
+    { label: "复制版本信息", run: function () { copyText("Minecraft " + ver + "（" + (kind === "release" ? "正式版" : kind === "snapshot" ? "快照" : "愚人节") + (date ? " · " + date : "") + "）", ver); } },
+    "-",
+    { label: "安装这个版本", run: function () { openInstall(ver); } }
+  ];
+  showCtx(e.clientX, e.clientY, items);
+});
+
+document.addEventListener("click", function (e) {
+  if (ctxEl && !e.target.closest("#ctxMenu")) closeCtx();
+});
+window.addEventListener("blur", closeCtx);
+
+/* ---------------- 公告 ---------------- */
+const SEEN_KEY = "trib_seen_announce";
+
+function renderAnnounce(res) {
+  const list = document.getElementById("annList");
+  const head = document.getElementById("annHead");
+  const bell = document.getElementById("bell");
+  if (!list) return;
+  if (!res.configured) {
+    head.textContent = "公告";
+    list.innerHTML = '<div class="ann-empty">还没有配置公告源。<br>在「设置 → 公告源 URL」里填一个 JSON 地址即可。</div>';
+    return;
+  }
+  if (res.error) {
+    head.textContent = "公告 · 拉取失败";
+    list.innerHTML = '<div class="ann-empty">拉取失败：' + res.error + "</div>";
+    return;
+  }
+  const items = res.items || [];
+  if (!items.length) {
+    head.textContent = "公告";
+    list.innerHTML = '<div class="ann-empty">暂无公告</div>';
+    return;
+  }
+  head.textContent = "公告 · " + items.length + " 条";
+  list.innerHTML = items.map(function (it) {
+    return '<div class="ann-item"><h4>' + (it.title || "") + "</h4><p>" + (it.body || "") +
+      '</p><div class="time">' + (it.date || "") + "</div></div>";
+  }).join("");
+  const seen = localStorage.getItem(SEEN_KEY) || "";
+  const latest = items[0] && (items[0].id || items[0].title || "");
+  if (bell) bell.classList.toggle("hasnew", !!latest && latest !== seen);
+}
+
+const bellEl = document.getElementById("bell");
+if (bellEl) {
+  bellEl.onclick = async function (e) {
+    e.stopPropagation();
+    const panel = document.getElementById("annPanel");
+    const open = panel.classList.toggle("on");
+    if (open) {
+      try {
+        const res = REAL ? (annCache || await window.trib.announce()) : { configured: false, items: [] };
+        renderAnnounce(res);
+        const it = (res.items || [])[0];
+        if (it) localStorage.setItem(SEEN_KEY, it.id || it.title || "");
+        bellEl.classList.remove("hasnew");
+      } catch (err) {
+        document.getElementById("annList").innerHTML = '<div class="ann-empty">拉取失败</div>';
+      }
+    }
+  };
+}
+document.addEventListener("click", function (e) {
+  const panel = document.getElementById("annPanel");
+  if (panel && panel.classList.contains("on") && !e.target.closest("#annPanel") && !e.target.closest("#bell")) {
+    panel.classList.remove("on");
+  }
+});
+
+/* ---------------- 公告：启动拉取 ---------------- */
+const ANN_KEY = "trib_seen_announce";
+const ANN_DISMISS = "trib_dismissed";
+let annCache = null;
+
+function showBanner(items) {
+  const el = document.getElementById("banner");
+  if (!el) return;
+  const dismissed = JSON.parse(localStorage.getItem(ANN_DISMISS) || "[]");
+  const urgent = (items || []).find(function (it) {
+    return (it.level === "urgent" || it.level === "warn") && dismissed.indexOf(it.id) < 0;
+  });
+  if (!urgent) { el.classList.remove("on"); return; }
+  el.className = "banner on " + (urgent.level || "info");
+  el.innerHTML = "<b>" + (urgent.title || "") + "</b> " + (urgent.body || "").split(String.fromCharCode(10))[0] +
+    '<span class="x" title="关闭">✕</span>';
+  el.querySelector(".x").onclick = function () {
+    const d = JSON.parse(localStorage.getItem(ANN_DISMISS) || "[]");
+    d.push(urgent.id);
+    localStorage.setItem(ANN_DISMISS, JSON.stringify(d));
+    el.classList.remove("on");
+  };
+}
+
+async function refreshAnnounce(silent) {
+  if (!REAL) return;
+  try {
+    const res = await window.trib.announce();
+    annCache = res;
+    const items = res.items || [];
+    const latest = items[0] ? (items[0].id || items[0].title) : "";
+    const seen = localStorage.getItem(ANN_KEY) || "";
+    const bell = document.getElementById("bell");
+    if (bell) bell.classList.toggle("hasnew", !!latest && latest !== seen);
+    showBanner(items);
+  } catch (e) { /* 静默 */ }
+}
+</script>
+</body>
+</html>
